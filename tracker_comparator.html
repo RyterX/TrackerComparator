@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker Torrent Updater</title>
+    <!-- Favicon a forma di calamita, visibile nella scheda del browser -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧲</text></svg>">
+    <!-- Utilizziamo Tailwind CSS per un'interfaccia moderna e minimalista -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Personalizzazione della barra di scorrimento per Windows */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl flex flex-col gap-6">
+        
+        <!-- Intestazione -->
+        <header class="text-center mb-4 flex flex-col items-center">
+            <!-- Logo Calamita Vectoriale -->
+            <div class="bg-blue-100 p-3 rounded-full mb-3 shadow-sm border border-blue-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600">
+                    <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Aggiorna Tracker Torrent</h1>
+            <p class="text-slate-500 mt-2">Unisci le tue liste rimuovendo i duplicati, formattate per il tuo client.</p>
+        </header>
+
+        <!-- Area di Input -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Lista Vecchia / Master -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col transition-colors duration-300" id="oldListContainer">
+                <div class="flex justify-between items-end mb-3">
+                    <label for="oldList" id="oldListLabel" class="font-semibold text-slate-700 transition-colors duration-300">Lista Vecchia (Master)</label>
+                    
+                    <!-- Bottone per caricare da file -->
+                    <div>
+                        <input type="file" id="fileInput" accept=".txt" class="hidden">
+                        <button onclick="document.getElementById('fileInput').click()" 
+                                class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-md transition duration-150 ease-in-out border border-slate-300 font-medium">
+                            📁 Carica da file .txt
+                        </button>
+                    </div>
+                </div>
+                <textarea id="oldList" placeholder="Incolla qui i tuoi vecchi tracker oppure usa il tasto 'Carica da file'..." 
+                          class="w-full flex-grow min-h-[200px] p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y text-sm font-mono text-slate-600 transition-colors duration-300"></textarea>
+            </div>
+
+            <!-- Lista Nuova -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                <div class="mb-3">
+                    <label for="newList" class="font-semibold text-slate-700">Lista Nuova</label>
+                </div>
+                <textarea id="newList" placeholder="Incolla qui i nuovi tracker che hai trovato in giro..." 
+                          class="w-full flex-grow min-h-[200px] p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y text-sm font-mono text-slate-600"></textarea>
+            </div>
+
+        </div>
+
+        <!-- Bottone di Azione Centrale e Opzioni -->
+        <div class="flex flex-col items-center my-2 gap-4">
+            <button onclick="unisciListe()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out transform hover:-translate-y-0.5 text-lg">
+                ⚡ Unisci, Pulisci e Formatta
+            </button>
+            
+            <label class="flex items-center cursor-pointer gap-2 text-sm text-slate-600 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
+                <input type="checkbox" id="autoUpdateMaster" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                <span class="font-medium select-none">Modalità continua: imposta il risultato come "Lista Vecchia" automaticamente</span>
+            </label>
+        </div>
+
+        <!-- Area dei Risultati -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+                <label for="resultList" class="font-semibold text-slate-700">Risultato Finale <span id="statsLabel" class="font-normal text-sm text-slate-500 ml-2"></span></label>
+                <div class="flex gap-2">
+                    <button onclick="copiaAppunti()" id="copyBtn" class="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md transition duration-150 border border-blue-200 font-medium">
+                        📋 Copia
+                    </button>
+                    <button onclick="scaricaFile()" class="text-sm bg-slate-800 hover:bg-slate-900 text-white py-1.5 px-3 rounded-md transition duration-150 font-medium">
+                        💾 Scarica .txt
+                    </button>
+                </div>
+            </div>
+            
+            <textarea id="resultList" readonly placeholder="Il risultato formattato apparirà qui..." 
+                      class="w-full h-64 p-3 bg-slate-50 border border-slate-300 rounded-lg outline-none resize-y text-sm font-mono text-slate-800"></textarea>
+        </div>
+
+    </main>
+
+    <script>
+        // Gestione del caricamento file
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('oldList').value = e.target.result;
+            };
+            reader.readAsText(file);
+            // Resetta l'input file per permettere di ricaricare lo stesso file se necessario
+            e.target.value = '';
+        });
+
+        function unisciListe() {
+            const oldText = document.getElementById('oldList').value;
+            const newText = document.getElementById('newList').value;
+            
+            // Creiamo un Set per rimuovere automaticamente i duplicati
+            const trackerSet = new Set();
+            
+            // Funzione di utilità per processare una stringa di testo
+            const processaTesto = (testo) => {
+                const righe = testo.split('\n');
+                for (let riga of righe) {
+                    riga = riga.trim();
+                    // Aggiungiamo solo se la riga non è vuota
+                    if (riga.length > 0) {
+                        trackerSet.add(riga);
+                    }
+                }
+            };
+
+            processaTesto(oldText);
+            processaTesto(newText);
+
+            // Trasformiamo in Array e ordiniamo alfabeticamente
+            const trackerArray = Array.from(trackerSet).sort();
+
+            // Riformattiamo unendo gli elementi con un doppio ritorno a capo (\n\n)
+            // Questo crea esattamente la spaziatura "un rigo vuoto" richiesta
+            const risultatoFormattato = trackerArray.join('\n\n');
+
+            // Mostriamo il risultato
+            document.getElementById('resultList').value = risultatoFormattato;
+
+            // Aggiorniamo le statistiche
+            document.getElementById('statsLabel').innerText = `(${trackerArray.length} tracker unici trovati)`;
+
+            // Gestione "Modalità Continua"
+            const isAutoUpdateEnabled = document.getElementById('autoUpdateMaster').checked;
+            if (isAutoUpdateEnabled && newText.trim() !== '') {
+                // Imposta il risultato nella lista vecchia
+                const oldListTextArea = document.getElementById('oldList');
+                oldListTextArea.value = risultatoFormattato;
+                
+                // Pulisce la lista nuova per il prossimo inserimento
+                document.getElementById('newList').value = '';
+
+                // Feedback visivo dell'aggiornamento
+                const label = document.getElementById('oldListLabel');
+                const container = document.getElementById('oldListContainer');
+                
+                label.innerText = 'Lista Vecchia (Aggiornata automaticamente! ✓)';
+                label.classList.replace('text-slate-700', 'text-green-600');
+                container.classList.replace('border-slate-200', 'border-green-300');
+                container.classList.add('bg-green-50');
+                container.classList.remove('bg-white');
+                oldListTextArea.classList.add('bg-green-50');
+
+                setTimeout(() => {
+                    label.innerText = 'Lista Vecchia (Master)';
+                    label.classList.replace('text-green-600', 'text-slate-700');
+                    container.classList.replace('border-green-300', 'border-slate-200');
+                    container.classList.remove('bg-green-50');
+                    container.classList.add('bg-white');
+                    oldListTextArea.classList.remove('bg-green-50');
+                }, 2000);
+            }
+        }
+
+        function copiaAppunti() {
+            const textToCopy = document.getElementById('resultList').value;
+            if (!textToCopy) return;
+
+            // Usa l'API moderna, o il fallback per compatibilità
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy);
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error('Copia fallita', err);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            // Feedback visivo sul bottone
+            const btn = document.getElementById('copyBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '✅ Copiato!';
+            btn.classList.add('bg-green-100', 'text-green-700', 'border-green-300');
+            btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-200');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-300');
+                btn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-200');
+            }, 2000);
+        }
+
+        function scaricaFile() {
+            const textToSave = document.getElementById('resultList').value;
+            if (!textToSave) return;
+
+            const blob = new Blob([textToSave], { type: 'text/plain' });
+            const a = document.createElement('a');
+            
+            a.download = 'tracker_aggiornati.txt';
+            a.href = window.URL.createObjectURL(blob);
+            a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
+            
+            // Simula il click per avviare il download
+            const event = new MouseEvent('click');
+            a.dispatchEvent(event);
+            
+            // Pulizia
+            setTimeout(function() {
+                window.URL.revokeObjectURL(a.href);
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
