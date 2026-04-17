@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker Torrent Updater</title>
+    <title>Tracker Comparator</title>
     <!-- Favicon a forma di calamita, visibile nella scheda del browser -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧲</text></svg>">
     <!-- Utilizziamo Tailwind CSS per un'interfaccia moderna e minimalista -->
@@ -16,20 +16,32 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col relative">
 
-    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl flex flex-col gap-6">
+    <!-- Selettore Lingua -->
+    <div class="absolute top-4 right-4 md:top-6 md:right-6">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-1 flex gap-1">
+            <button onclick="setLanguage('it')" id="btn-lang-it" class="px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-sm font-medium transition-colors flex items-center gap-2">
+                🇮🇹 <span class="hidden sm:inline">ITA</span>
+            </button>
+            <button onclick="setLanguage('en')" id="btn-lang-en" class="px-3 py-1.5 rounded-md hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors flex items-center gap-2">
+                🇬🇧 <span class="hidden sm:inline">ENG</span>
+            </button>
+        </div>
+    </div>
+
+    <main class="flex-grow container mx-auto px-4 py-12 max-w-5xl flex flex-col gap-6">
         
         <!-- Intestazione -->
-        <header class="text-center mb-4 flex flex-col items-center">
+        <header class="text-center mb-4 flex flex-col items-center mt-6">
             <!-- Logo Calamita Vectoriale -->
             <div class="bg-blue-100 p-3 rounded-full mb-3 shadow-sm border border-blue-200">
                 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600">
                     <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"/>
                 </svg>
             </div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Aggiorna Tracker Torrent</h1>
-            <p class="text-slate-500 mt-2">Unisci le tue liste rimuovendo i duplicati, formattate per il tuo client.</p>
+            <h1 id="app-title" class="text-3xl font-bold text-slate-900 tracking-tight">Tracker Comparator</h1>
+            <p id="app-subtitle" class="text-slate-500 mt-2">Unisci le tue liste rimuovendo i duplicati, formattate per il tuo client.</p>
         </header>
 
         <!-- Area di Input -->
@@ -43,7 +55,7 @@
                     <!-- Bottone per caricare da file -->
                     <div>
                         <input type="file" id="fileInput" accept=".txt" class="hidden">
-                        <button onclick="document.getElementById('fileInput').click()" 
+                        <button id="btn-load" onclick="document.getElementById('fileInput').click()" 
                                 class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-md transition duration-150 ease-in-out border border-slate-300 font-medium">
                             📁 Carica da file .txt
                         </button>
@@ -56,7 +68,7 @@
             <!-- Lista Nuova -->
             <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
                 <div class="mb-3">
-                    <label for="newList" class="font-semibold text-slate-700">Lista Nuova</label>
+                    <label for="newList" id="lbl-new-list" class="font-semibold text-slate-700">Lista Nuova</label>
                 </div>
                 <textarea id="newList" placeholder="Incolla qui i nuovi tracker che hai trovato in giro..." 
                           class="w-full flex-grow min-h-[200px] p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-y text-sm font-mono text-slate-600"></textarea>
@@ -66,26 +78,29 @@
 
         <!-- Bottone di Azione Centrale e Opzioni -->
         <div class="flex flex-col items-center my-2 gap-4">
-            <button onclick="unisciListe()" 
+            <button id="btn-action" onclick="unisciListe()" 
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition duration-200 ease-in-out transform hover:-translate-y-0.5 text-lg">
                 ⚡ Unisci, Pulisci e Formatta
             </button>
             
             <label class="flex items-center cursor-pointer gap-2 text-sm text-slate-600 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors">
                 <input type="checkbox" id="autoUpdateMaster" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
-                <span class="font-medium select-none">Modalità continua: imposta il risultato come "Lista Vecchia" automaticamente</span>
+                <span id="lbl-continuous" class="font-medium select-none">Modalità continua: imposta il risultato come "Lista Vecchia" automaticamente</span>
             </label>
         </div>
 
         <!-- Area dei Risultati -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
             <div class="flex justify-between items-center mb-3">
-                <label for="resultList" class="font-semibold text-slate-700">Risultato Finale <span id="statsLabel" class="font-normal text-sm text-slate-500 ml-2"></span></label>
+                <div class="font-semibold text-slate-700">
+                    <span id="lbl-result">Risultato Finale</span> 
+                    <span id="statsLabel" class="font-normal text-sm text-slate-500 ml-2"></span>
+                </div>
                 <div class="flex gap-2">
                     <button onclick="copiaAppunti()" id="copyBtn" class="text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md transition duration-150 border border-blue-200 font-medium">
                         📋 Copia
                     </button>
-                    <button onclick="scaricaFile()" class="text-sm bg-slate-800 hover:bg-slate-900 text-white py-1.5 px-3 rounded-md transition duration-150 font-medium">
+                    <button onclick="scaricaFile()" id="btn-download" class="text-sm bg-slate-800 hover:bg-slate-900 text-white py-1.5 px-3 rounded-md transition duration-150 font-medium">
                         💾 Scarica .txt
                     </button>
                 </div>
@@ -98,7 +113,87 @@
     </main>
 
     <script>
-        // Gestione del caricamento file
+        // --- SISTEMA DI TRADUZIONE (i18n) ---
+        const translations = {
+            it: {
+                subtitle: "Unisci le tue liste rimuovendo i duplicati, formattate per il tuo client.",
+                oldListLabel: "Lista Vecchia (Master)",
+                oldListUpdated: "Lista Vecchia (Aggiornata automaticamente! ✓)",
+                loadBtn: "📁 Carica da file .txt",
+                oldListPlaceholder: "Incolla qui i tuoi vecchi tracker oppure usa il tasto 'Carica da file'...",
+                newListLabel: "Lista Nuova",
+                newListPlaceholder: "Incolla qui i nuovi tracker che hai trovato in giro...",
+                actionBtn: "⚡ Unisci, Pulisci e Formatta",
+                continuousMode: "Modalità continua: imposta il risultato come 'Lista Vecchia' automaticamente",
+                resultLabel: "Risultato Finale",
+                statsText: "({count} tracker unici trovati)",
+                copyBtn: "📋 Copia",
+                copiedBtn: "✅ Copiato!",
+                downloadBtn: "💾 Scarica .txt",
+                resultPlaceholder: "Il risultato formattato apparirà qui..."
+            },
+            en: {
+                subtitle: "Merge your lists, remove duplicates, and format them for your client.",
+                oldListLabel: "Old List (Master)",
+                oldListUpdated: "Old List (Automatically updated! ✓)",
+                loadBtn: "📁 Load from .txt file",
+                oldListPlaceholder: "Paste your old trackers here or use the 'Load from file' button...",
+                newListLabel: "New List",
+                newListPlaceholder: "Paste the new trackers you found here...",
+                actionBtn: "⚡ Merge, Clean and Format",
+                continuousMode: "Continuous mode: automatically set the result as 'Old List'",
+                resultLabel: "Final Result",
+                statsText: "({count} unique trackers found)",
+                copyBtn: "📋 Copy",
+                copiedBtn: "✅ Copied!",
+                downloadBtn: "💾 Download .txt",
+                resultPlaceholder: "The formatted result will appear here..."
+            }
+        };
+
+        let currentLang = 'it';
+        let currentTrackerCount = 0; // Serve per aggiornare la traduzione delle statistiche
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+
+            // Aggiorna i testi
+            document.getElementById('app-subtitle').innerText = t.subtitle;
+            document.getElementById('oldListLabel').innerText = t.oldListLabel;
+            document.getElementById('btn-load').innerText = t.loadBtn;
+            document.getElementById('oldList').placeholder = t.oldListPlaceholder;
+            document.getElementById('lbl-new-list').innerText = t.newListLabel;
+            document.getElementById('newList').placeholder = t.newListPlaceholder;
+            document.getElementById('btn-action').innerText = t.actionBtn;
+            document.getElementById('lbl-continuous').innerText = t.continuousMode;
+            document.getElementById('lbl-result').innerText = t.resultLabel;
+            document.getElementById('copyBtn').innerText = t.copyBtn;
+            document.getElementById('btn-download').innerText = t.downloadBtn;
+            document.getElementById('resultList').placeholder = t.resultPlaceholder;
+
+            // Aggiorna le statistiche se sono presenti
+            if (currentTrackerCount > 0) {
+                document.getElementById('statsLabel').innerText = t.statsText.replace('{count}', currentTrackerCount);
+            }
+
+            // Aggiorna lo stile dei bottoni lingua
+            const btnIt = document.getElementById('btn-lang-it');
+            const btnEn = document.getElementById('btn-lang-en');
+
+            if (lang === 'it') {
+                btnIt.className = "px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-sm font-medium transition-colors flex items-center gap-2";
+                btnEn.className = "px-3 py-1.5 rounded-md hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors flex items-center gap-2";
+                document.documentElement.lang = "it";
+            } else {
+                btnEn.className = "px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-sm font-medium transition-colors flex items-center gap-2";
+                btnIt.className = "px-3 py-1.5 rounded-md hover:bg-slate-100 text-slate-600 text-sm font-medium transition-colors flex items-center gap-2";
+                document.documentElement.lang = "en";
+            }
+        }
+
+        // --- GESTIONE LOGICA DELL'APP ---
+
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -108,7 +203,6 @@
                 document.getElementById('oldList').value = e.target.result;
             };
             reader.readAsText(file);
-            // Resetta l'input file per permettere di ricaricare lo stesso file se necessario
             e.target.value = '';
         });
 
@@ -116,15 +210,12 @@
             const oldText = document.getElementById('oldList').value;
             const newText = document.getElementById('newList').value;
             
-            // Creiamo un Set per rimuovere automaticamente i duplicati
             const trackerSet = new Set();
             
-            // Funzione di utilità per processare una stringa di testo
             const processaTesto = (testo) => {
                 const righe = testo.split('\n');
                 for (let riga of righe) {
                     riga = riga.trim();
-                    // Aggiungiamo solo se la riga non è vuota
                     if (riga.length > 0) {
                         trackerSet.add(riga);
                     }
@@ -134,34 +225,26 @@
             processaTesto(oldText);
             processaTesto(newText);
 
-            // Trasformiamo in Array e ordiniamo alfabeticamente
             const trackerArray = Array.from(trackerSet).sort();
-
-            // Riformattiamo unendo gli elementi con un doppio ritorno a capo (\n\n)
-            // Questo crea esattamente la spaziatura "un rigo vuoto" richiesta
             const risultatoFormattato = trackerArray.join('\n\n');
 
-            // Mostriamo il risultato
             document.getElementById('resultList').value = risultatoFormattato;
 
-            // Aggiorniamo le statistiche
-            document.getElementById('statsLabel').innerText = `(${trackerArray.length} tracker unici trovati)`;
+            // Aggiorna le statistiche
+            currentTrackerCount = trackerArray.length;
+            document.getElementById('statsLabel').innerText = translations[currentLang].statsText.replace('{count}', currentTrackerCount);
 
             // Gestione "Modalità Continua"
             const isAutoUpdateEnabled = document.getElementById('autoUpdateMaster').checked;
             if (isAutoUpdateEnabled && newText.trim() !== '') {
-                // Imposta il risultato nella lista vecchia
                 const oldListTextArea = document.getElementById('oldList');
                 oldListTextArea.value = risultatoFormattato;
-                
-                // Pulisce la lista nuova per il prossimo inserimento
                 document.getElementById('newList').value = '';
 
-                // Feedback visivo dell'aggiornamento
                 const label = document.getElementById('oldListLabel');
                 const container = document.getElementById('oldListContainer');
                 
-                label.innerText = 'Lista Vecchia (Aggiornata automaticamente! ✓)';
+                label.innerText = translations[currentLang].oldListUpdated;
                 label.classList.replace('text-slate-700', 'text-green-600');
                 container.classList.replace('border-slate-200', 'border-green-300');
                 container.classList.add('bg-green-50');
@@ -169,7 +252,7 @@
                 oldListTextArea.classList.add('bg-green-50');
 
                 setTimeout(() => {
-                    label.innerText = 'Lista Vecchia (Master)';
+                    label.innerText = translations[currentLang].oldListLabel;
                     label.classList.replace('text-green-600', 'text-slate-700');
                     container.classList.replace('border-green-300', 'border-slate-200');
                     container.classList.remove('bg-green-50');
@@ -183,7 +266,6 @@
             const textToCopy = document.getElementById('resultList').value;
             if (!textToCopy) return;
 
-            // Usa l'API moderna, o il fallback per compatibilità
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(textToCopy);
             } else {
@@ -200,15 +282,13 @@
                 document.body.removeChild(textArea);
             }
 
-            // Feedback visivo sul bottone
             const btn = document.getElementById('copyBtn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '✅ Copiato!';
+            btn.innerHTML = translations[currentLang].copiedBtn;
             btn.classList.add('bg-green-100', 'text-green-700', 'border-green-300');
             btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-200');
             
             setTimeout(() => {
-                btn.innerHTML = originalText;
+                btn.innerHTML = translations[currentLang].copyBtn;
                 btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-300');
                 btn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-200');
             }, 2000);
@@ -221,15 +301,13 @@
             const blob = new Blob([textToSave], { type: 'text/plain' });
             const a = document.createElement('a');
             
-            a.download = 'tracker_aggiornati.txt';
+            a.download = 'tracker_comparator_list.txt';
             a.href = window.URL.createObjectURL(blob);
             a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
             
-            // Simula il click per avviare il download
             const event = new MouseEvent('click');
             a.dispatchEvent(event);
             
-            // Pulizia
             setTimeout(function() {
                 window.URL.revokeObjectURL(a.href);
             }, 1500);
